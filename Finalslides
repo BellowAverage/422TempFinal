@@ -1,0 +1,123 @@
+## Slide 1
+
+Model 3 & 4: Time Series Analysis Using LSTM and Linear Regression
+
+"Alright, so there's this unexpected emergency that prevents me from attending the session, but I'm alright, I'll be with you guys very soon, but here we are, so please allow me to introduce our work about time series analysis in a form like this. So, I'm gonna talk about time series analysis based on historical prices of the used cars, in which I'm gonna focus on constructing time series data, challenges we faced, and about our time-series models."
+
+## Slide 2
+
+"So, Why do we consider predicting used car price from a time series prospective?"
+
+1. Price evolve over time
+
+"When a car is listed, its price is not necessarily static. The same vehicle can be relisted several times as its owner adjusts the price based on market feedback or negotiation outcomes. For instance, a seller might initially set a higher price, then gradually lower it if the car isn’t selling. This dynamic process creates a chronological record of price changes. So that is price evolves over time."
+
+2. Considering seasonality and trends
+
+"Used-car prices are influenced by seasonal demand and broader macroeconomic factors. For example, during certain times of the year—such as the end of the fiscal year or in the lead-up to major holidays—demand might spike or drop, which influences pricing strategies. Also, external factors, which is to be captured by time series, such as fuel price fluctuations, economic slowdowns, or even weather conditions (which might affect car usage), you know, like in Chicago, you don't wanna drive very often in Winter right. So these can cause systematic price variations. So as I said, Time-series models are capable of detecting these seasonal patterns and long-term trends."
+
+## Slide 3
+
+Data Cleaning & Preprocessing for Time-series Analysis
+
+"So first, data cleaning, we are gonna perform log transformation on 'price', as we are doing LSTM, we wanna stablize the training. And secondly, we are going to drop rows with missing fields, for others, we forward-fill'em, and we convert string type date dimension into model-interpretable type, which is datetime, and sort them by VIN. So VIN, if you are familiar with cars, VIN is the sole identifier of a certain vehcile. That is, you can only have one VIN for one vehichle. And of course we are going to encode them in integer because the original form of VIN has nothing to do with, the car's price."
+
+
+## Slide 4
+
+Challenges and Solutions 1: Limited Time-series data per vehicle
+
+"So let's talk about feature engineering. But before that, we'll have to discuss our dataset. In fact, our dataset is not strictly suitable for a time-series analysis. That is, In many used-car datasets, each individual car (identified by VIN) does not necessarily have many repeated timestamps. Often, a car is listed once or a handful of times, not in a long continuous history. LSTMs (and RNNs in general) thrive when there are sufficiently long sequences for each entity. But here, sequences are short—some vehicles only appear 2–5 times with price changes, if at all."
+
+1. Panel Data & Sliding Window Approach
+
+"So what we do is that We grouped data by VIN and applied a sliding window of a fixed length (e.g., 3). This means that for each vehicle, we took consecutive records in time as a mini-sequence. Even if each VIN has only a few timestamps, we extract windows from those few data points."
+
+## Slide 5
+
+2. Multiple Vehicles, Shared LSTM Parameters
+
+"And another feature engineering method we adopted to deal with this problem is that, Each short sequence for any car is combined into one dataset. So we don't have enough sequence for each car, but we have many different cars' data. The LSTM then learns from all these sequences (across thousands of cars), effectively doing a what we believed is a “multi-sequence” training. This approach tries to leverage the shared patterns across different vehicles, even though each vehicle’s individual history is short."
+
+## Slide 6
+
+Challenges and Solutions 2: Irregular or Sparse Timestamp Distribution
+
+"So the second challenge in feature engineering is that Used car listings of our dataset often do not appear at uniform intervals. Some listings might be days apart, others might be months. So what this says is that some seller might post a lower price every month he or she finds unable to sell it. Some never changes the price at all. Meanwhile, typical LSTM-based methods assume regularly spaced time steps."
+
+1. Sorting by date and using window
+
+"Even though intervals are irregular, we still sort records by posting_date and treat each consecutive record as the next “time step.” This is a common simplification. This, necessarily, causes loss in features, but it is a viable option to make it work."
+
+## Slide 7
+
+2. Dropping very sparse VINs
+
+"If a car only appears once or does not meet a minimum sequence length, we exclude it from the LSTM training set."
+
+3. Possible Approaches (Still WIP)
+
+"A more sophisticated method could introduce “time-gaps” as an input or use interpolation to handle irregular intervals. But for simplicity, we used the standard approach of consecutive records as consecutive steps."
+
+## Slide 8
+
+"Alright let's now talk about cross validation and hyperparameter tunning. So considering activation functions, In our LSTM cells, the internal gates (input, forget, and output) use sigmoid activations, while the candidate cell state uses tanh. So we are using Sigmoid, because it squashes gate outputs between 0 and 1, which is ideal for modulating how much information should be kept or discarded.
+
+In our case, which is, sparse used-car dataset, where each vehicle has only a few time steps, sigmoid should work better in helping the network decide which limited historical signals are worth preserving.
+
+And Tanh provides outputs in a symmetric range (–1 to 1), allowing the model to capture both increases and decreases in price. Cuz obviously car's prices can both drop and rise so. And Our final Dense layer uses a linear activation, that is because Since our target is a log-transformed price (which is continuous), a linear output is standard for regression."
+
+## Slide 8
+
+"So we are using Adam as our optimizer because as i said, again, Our used car dataset is sparse: many vehicles have only a handful of records, and some features may be noisy. Adam’s adaptive updates tend to work better in helping stabilize training across such diverse samples. and a clipnorm equals one, which is pretty little, ..."
+
+## Slide 9
+
+"... and we are using single layer lstm, to better prevent the updates from exploding due to the same reason."
+
+## Slide 10
+
+"And we can see, the result is not pleasant considering MSE across all folds and hyperparameter sets."
+
+## Slide 11
+
+"And if you look at the prediction, it seems that LSTM is able to predict the absolute price somehow, with a bit of a gap, but it fails to capture trends. Overall, it's not as good as other models that we did."
+
+## Slide 12
+
+"So why's that, obviously, what we learned is that LSTM cannot learn a meaningful trend if there is only a few price changes in the sequence. What it needs is long and consecutive sequence and of course with features changing significantly across time steps."
+
+## Slide 13
+
+"So we started to think what if we still base on the time series data, while replacing lstm with linear regression? Becuae In a linear model, each input dimension directly contributes to the output, without the need for memory cells or gates. When only a few time steps exist, a linear combination can capture basic trends. And it serves as a benchmark. Frankly speaking, if lstm fails to outperform a simple linear model on the same time-series data, it indicates that the time-series nature of the data may not be strong enough, or not captured sufficiently to warrant a more complex model."
+
+## Slide 14
+
+"So we did, using the very same time-series data and cross validation strategy and the output indeed ends up better."
+
+## Slide 15
+
+## Slide 16
+
+And if you take a look at the prediction it does, it is able to capture trend, if not, very precisely, but it is doing better than lstm."
+
+## Slide 17
+
+"So we found that simplicity wins with sparse data. While surely When individual time series are too short, techniques such as sliding windows can help create additional training samples, the success of these methods also depends on the quality and variation within the window."
+
+## Slide 18
+
+"Alright that's the end of our presentation. Thank you for listening, and questions are welcome."
+
+
+
+
+
+
+
+
+
+
+
+
+
